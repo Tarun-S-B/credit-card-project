@@ -161,6 +161,7 @@ class SilverCard: public CreditCard {
     public:
         string cName;
         int rewardPoints;
+        //add different intial spend limit
 
         SilverCard() {
             cName = "Silver Card";
@@ -230,6 +231,22 @@ class CardHolder {
                 cout << "Available Limit: " << CurrCard->spendLimit - CurrCard->outstandingBalance << endl;
                 cout << e.what() << endl;
             }
+        }
+
+        void payBill() {
+            CurrCard->statement.pushback(Transaction("Pay Outstanding Balance",CurrCard->outstandingBalance));
+            CurrCard->outstandingBalance = 0;
+        }
+
+        void increaseLimit() {
+            //increase is overall spend is more than 5x the current limit
+            double totalSpend = 0;
+            Transaction* trans;
+            for(int i=0; i<CurrCard->statement.size(), i++) {
+                totalSpend += CurrCard->statement[i].amt;
+            } 
+            
+
         }
 
 }
