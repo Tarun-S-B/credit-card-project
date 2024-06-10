@@ -3,6 +3,7 @@
 #include<exception>
 #include<ctime>
 #include<cstdlib>
+#include<limits>
 using namespace std;
 
 int randomNum() {
@@ -45,6 +46,9 @@ class INVALID_INPUT: public runtime_error {
 };
 
 
+void giveChoices();
+void cardActions();
+
 
 class Transaction {
     public:
@@ -59,9 +63,10 @@ class CreditCard {
     protected:
         int cvv;
         //string bankName;
-        int PIN;
+        // int PIN;
 
     public:
+        int PIN;
         string cardNo;
         string cName;
         double multipler;
@@ -75,9 +80,10 @@ class CreditCard {
 
     CreditCard()
     {
+        outstandingBalance = 0;
         //Name of Bank
         //bankName = bName;
-        PIN = -1;
+        // PIN = -1;
 
         //CARD NUMBER GENERATION
         for (int x=0; x<16; x++)
@@ -106,24 +112,18 @@ class CreditCard {
         // code to generate pin for credit card
         // change the pin
         int tempPIN;
-
-        if(PIN == -1) {
             try {
                 cout << "Enter New PIN: " << endl;
-                cin >> tempPIN;
-                if(PIN<1000 || PIN>9999) 
+                // cin.ignore();
+                cin >> this->PIN;
+                // cin.ignore(numeric_limits<streamsize>::max(), '\n');
+                cin.ignore();
+                if(PIN<=0 || PIN>9999) 
                     throw INVALID_PIN();           //EXCEPTION EXCEPTION EXCEPTION
-                else {
-                    PIN = tempPIN;
-                }
             }
             catch(INVALID_PIN& e) {
                 cout << e.what() << endl;
-            }
-        }
-        else {
-            cout << "PIN ALREADY GENERATED" << endl;
-        }
+            }   
     }
 
     void changePIN() {
@@ -184,6 +184,10 @@ class CreditCard {
                 totalSpend += statement[i].amt;
         }
         return totalSpend;
+    }
+
+    int getPIN() {
+        return PIN;
     }
 
 };
@@ -269,6 +273,7 @@ class CardHolder {
                 CurrCard = new PlatinumCard();
                 Cards.push_back(CurrCard);
                 //CurrCard = &Cards[Cards.size()-1];
+                CurrCard->genaratePIN();
                 cout << "Platinum Card Issued:" << endl;
                 CurrCard->cardDetails();
             }
@@ -276,6 +281,7 @@ class CardHolder {
                 CurrCard = new GoldCard();
                 Cards.push_back(CurrCard);
                 // CurrCard = &Cards[Cards.size()-1];
+                CurrCard->genaratePIN();
                 cout << "Gold Card Issued:" << endl;
                 CurrCard->cardDetails();
             }
@@ -283,15 +289,24 @@ class CardHolder {
                 CurrCard = new SilverCard();
                 Cards.push_back(CurrCard);
                 // CurrCard = &Cards[Cards.size()-1];
+                CurrCard->genaratePIN();
                 cout << "Silver Card Issued:" << endl;
                 CurrCard->cardDetails();
             }
         }
 
         void pay(string receiver, double amt) {
+            int cardPin;
+            cout << "IN PAY PIN is " << CurrCard->getPIN();
             try {
-                if(CurrCard == NULL) 
+                if(CurrCard == nullptr) 
                     throw NO_CARD();
+
+                cout << "Enter PIN:" << endl;
+                cin >> cardPin;
+                if(cardPin != CurrCard->getPIN())
+                    throw INCORRECT_PIN_ERROR();
+
                 if(CurrCard->outstandingBalance + amt <= CurrCard->spendLimit) {
                     CurrCard->outstandingBalance += amt;
                     CurrCard->statement.push_back(Transaction(receiver,amt));
@@ -309,6 +324,10 @@ class CardHolder {
             catch(NO_CARD& e) {
                 cout << e.what() << endl;
                 cout << "Use .applyCreditCard() method" << endl;
+            }
+            catch(INCORRECT_PIN_ERROR& e) {
+                cout << e.what() << endl;
+                cout << "Transaction Failed" << endl;
             }
         }
 
@@ -447,11 +466,11 @@ class System {
 
 int main()
 {
-    CardHolder Tar("Tiger", "India", "@gmail.com", "999", 700);
-    Tar.applyCreditCard();
-    Tar.displayCurrCard();
-    Tar.repay();
-    Tar.surrenderCard();
+//     CardHolder Tar("Tiger", "India", "@gmail.com", "999", 700);
+//     Tar.applyCreditCard();
+//     Tar.displayCurrCard();
+//     Tar.repay();
+//     Tar.surrenderCard();
     // Tar.pay("Triumph", 25000);
     // Tar.pay("Axor", 5000);
     // Tar.pay("Triumph", 50000);
@@ -469,14 +488,131 @@ int main()
     // Tar.viewStatement();
     // Tar.displayCards();
 
-
     int ch;
+    int cardCh = 1;
+    vector <CardHolder*> Users;
+    string name, address, email, phoneNum,receiver;
+    int creditScore;
+    double amt;
+
+    CardHolder* user = NULL;
+
     while(1) {
-        break;
+        giveChoices();
+        cin >> ch;
+
+        switch(ch) {
+            case 1: cout << "Name: ";
+                    cin.ignore();
+                    getline(cin, name);
+                    
+                    cout << "Address: ";
+                    cin.ignore();
+                    getline(cin, address);
+
+                    cout << "Email: ";
+                    cin >> email;
+
+                    cout << "Phone No: ";
+                    cin >> phoneNum;
+
+                    cout << "Credit Score: ";
+                    cin >> creditScore;
+
+                    user = new CardHolder(name, address, email, phoneNum, creditScore);
+                    Users.push_back(user);
+                    break;
+
+            case 2: if(user == nullptr) {
+                        cout << "Add User First" << endl;
+                        break;
+                    }
+            
+                    while(cardCh>0 && cardCh<=11) {
+                        cardActions();
+                        cin >> cardCh;
+
+                        switch(cardCh) {
+                            case 1: user->applyCreditCard();
+                                    break;
+
+                            case 2: if(user->CurrCard == nullptr) {
+                                        cout << "Apply for Card" << endl;
+                                        break;
+                                    }
+                                    cout << "Enter Receiver: ";
+                                    cin >> receiver;
+                                    cout << "Enter Amount: ";
+                                    cin >> amt;
+                                    user->pay(receiver,amt);
+                                    break;
+
+                            case 3: user->displayCards();
+                                    break;
+
+                            case 4: user->displayCurrCard();
+                                    break;
+
+                            case 5: user->switchCard();
+                                    break;
+
+                            case 6: user->repay();
+                                    break;
+
+                            case 7: user->increaseLimit();
+                                    break;
+
+                            case 8: user->viewStatement();
+                                    break;
+
+                            case 9: user->useRewards();
+                                    break;
+
+                            case 10: user->surrenderCard();
+                                    break;
+
+                            case 11: user->CurrCard->changePIN();
+                                    break;
+
+                            default: break;
+                        }
+                    }
+        }
     }
     return 0;
 }
 
+    
+        // void applyCreditCard() {
+        // void pay(string receiver, double amt) 
+        // void displayCards() {    
+        // void displayCurrCard() {
+        // void switchCard() {
+        // void repay() {
+        // void increaseLimit() {
+        // void viewStatement() {
+        // void useRewards() {
+        // void surrenderCard() {
+
+
+void cardActions() {
+    cout << "1. Apply For Credit Card" << endl;
+    cout << "2. Make Payment" << endl;
+    cout << "3. Display Cards" << endl;
+    cout << "4. Display Current Card" << endl;
+    cout << "5. Switch Card" << endl;
+    cout << "6. Repay Due Amount" << endl;
+    cout << "7. Limit Increment Appeal" << endl;
+    cout << "8. View Statement" << endl;
+    cout << "9. Redeem Reward Points" << endl;
+    cout << "10.Surrender Card" << endl;
+    cout << "11.Change Card PIN" << endl;
+
+    cout << endl << "Enter Action: ";
+    //cout << "11.Go Back" << endl;
+}
+
 void giveChoices() {
-    return;
+    cout << "1. Add User" << endl;
+    cout << "2. Card Transaction" << endl;
 }
