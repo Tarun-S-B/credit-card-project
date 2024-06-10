@@ -1,19 +1,13 @@
-#include <iostream>
-#include <ctime>
-#include <random>
-#include <exception>
-
+#include<iostream>
+#include<vector>
+#include<exception>
+#include<ctime>
+#include<cstdlib>
 using namespace std;
 
 int randomNum() {
-    
     return rand() % 10;
 }
-
-
-
-
-
 
 class INVALID_PIN: public runtime_error {
     public:
@@ -30,6 +24,26 @@ class INSUFFICIENT_BALANCE: public runtime_error {
         INSUFFICIENT_BALANCE(): runtime_error("Insufficient Amount") {}
 };
 
+class NO_CARD: public runtime_error {
+    public:
+        NO_CARD(): runtime_error("No Credit Card Issued") {}
+};
+
+class INELIGIBLE_LIMIT_INCREMENT: public runtime_error {
+    public:
+        INELIGIBLE_LIMIT_INCREMENT(): runtime_error("Spend More on Credit to be eligible for Spend Limit INcrement") {}
+};
+
+class DUE_PENDING: public runtime_error {
+    public:
+        DUE_PENDING(): runtime_error("Pay the Due Amount Before Surrendering") {}
+};
+
+class INVALID_INPUT: public runtime_error {
+    public:
+        INVALID_INPUT(): runtime_error("Please enter Valid Input") {}
+};
+
 
 
 class Transaction {
@@ -43,24 +57,26 @@ class Transaction {
 
 class CreditCard {
     protected:
-        string cardNo;
         int cvv;
-        string bankName;
+        //string bankName;
         int PIN;
 
     public:
+        string cardNo;
+        string cName;
+        double multipler;
         double spendLimit;
         double outstandingBalance;
         string expiryDate;
-        virtual int multipler;
         vector <Transaction> statement;
+        int rewardPoints;
 
     friend int randomNum();
 
-    CreditCard(string bName)
+    CreditCard()
     {
         //Name of Bank
-        bankName = bName;
+        //bankName = bName;
         PIN = -1;
 
         //CARD NUMBER GENERATION
@@ -72,15 +88,18 @@ class CreditCard {
         for (int x=0; x<3; x++)
             temp.append(to_string(randomNum()));
         cvv = stoi(temp);
+
         
         //EXPIRE DATE
         expiryDate = expireDate();
     }
 
-    void displayCard() {
+    virtual void cardDetails() const {
         cout << "Card No: " << cardNo << endl;
         cout << "CVV: " << cvv << endl;
         cout << "Exp Date: " << expiryDate << endl;
+        cout << "Spend Limit: " << spendLimit << endl;
+        cout << "Outstanding Balance: " << outstandingBalance << endl;
     }
 
     void genaratePIN() {
@@ -155,43 +174,75 @@ class CreditCard {
         return expDate;
     }
 
+    double Statement() {
+        int x = statement.size();
+        double totalSpend = 0;
+        for(int i=0; i<x; i++) {
+            cout << statement[i].To << ": ";
+            cout << statement[i].amt << endl;
+            if(statement[i].To != "Repay Due Amount")
+                totalSpend += statement[i].amt;
+        }
+        return totalSpend;
+    }
+
 };
 
 class SilverCard: public CreditCard {
     public:
-        string cName;
-        int rewardPoints;
-        //add different intial spend limit
-
-        SilverCard() {
+            SilverCard() {
             cName = "Silver Card";
             multipler = 0.01;
             rewardPoints = 0;
+            spendLimit = 20000;
+        }
+
+        void cardDetails() const override{
+            cout << "Card No: " << cardNo << endl;
+            cout << "CVV: " << cvv << endl;
+            cout << "Exp Date: " << expiryDate << endl;
+            cout << "Spend Limit: " << spendLimit << endl;
+            cout << "Reward Points: " << rewardPoints << endl;
         }
 };
 
 class GoldCard: public CreditCard {
     public:
-        string cName;
-        int rewardPoints;
-
         GoldCard() {
             cName = "Gold Card";
             multipler = 0.02;
             rewardPoints = 0;
+            spendLimit = 50000;
+        }
+
+        void cardDetails() const override{
+            cout << "Card No: " << cardNo << endl;
+            cout << "CVV: " << cvv << endl;
+            cout << "Exp Date: " << expiryDate << endl;
+            cout << "Spend Limit: " << spendLimit << endl;
+            cout << "Reward Points: " << rewardPoints << endl;
         }
 };
 
 
 class PlatinumCard: public CreditCard {
     public:
-        string cName;
-        int rewardPoints;
-
         PlatinumCard() {
             cName = "Platinum Card";
             multipler = 0.05;
             rewardPoints = 0;
+            spendLimit = 100000;
+        }
+
+        void cardDetails() const override{
+            // cout << "Card Type: " << cName << endl;
+            // CreditCard::cardDetails();
+            // cout << "Reward Points: " << rewardPoints << endl
+            cout << "Card No: " << cardNo << endl;
+            cout << "CVV: " << cvv << endl;
+            cout << "Exp Date: " << expiryDate << endl;
+            cout << "Spend Limit: " << spendLimit << endl;
+            cout << "Reward Points: " << rewardPoints << endl;
         }
 };
 
@@ -201,27 +252,51 @@ class CardHolder {
         string address;
         string email;
         string phoneNo;
-        vector<CreditCard> Cards;
+        vector<CreditCard*> Cards;
         CreditCard* CurrCard;
         int creditScore;
 
         CardHolder(string n, string a, string e, string p, int c): name(n), address(a), email(e), phoneNo(p), creditScore(c) {}
-        {
-            if(c>800)
-                //allocate platinmum
-            else if(c>675)
-                //allocate gold
-            else
-                //allocate silver
 
-            // add the card to Cards vector as well
+        ~CardHolder() {
+            for(int i=0; i<Cards.size(); i++) {
+                dropCard(i);
+            }
+        }
+
+        void applyCreditCard() {
+            if(creditScore>800) {
+                CurrCard = new PlatinumCard();
+                Cards.push_back(CurrCard);
+                //CurrCard = &Cards[Cards.size()-1];
+                cout << "Platinum Card Issued:" << endl;
+                CurrCard->cardDetails();
+            }
+            else if(creditScore>675) {
+                CurrCard = new GoldCard();
+                Cards.push_back(CurrCard);
+                // CurrCard = &Cards[Cards.size()-1];
+                cout << "Gold Card Issued:" << endl;
+                CurrCard->cardDetails();
+            }
+            else {
+                CurrCard = new SilverCard();
+                Cards.push_back(CurrCard);
+                // CurrCard = &Cards[Cards.size()-1];
+                cout << "Silver Card Issued:" << endl;
+                CurrCard->cardDetails();
+            }
         }
 
         void pay(string receiver, double amt) {
             try {
+                if(CurrCard == NULL) 
+                    throw NO_CARD();
                 if(CurrCard->outstandingBalance + amt <= CurrCard->spendLimit) {
                     CurrCard->outstandingBalance += amt;
-                    CurrCard->statement.pushback(Transaction(receiver,amt));
+                    CurrCard->statement.push_back(Transaction(receiver,amt));
+                    cout << "Transaction Done: " << receiver << ": " << amt << endl;
+                    CurrCard->rewardPoints += amt * CurrCard->multipler;
                 }
                 else {
                     throw INSUFFICIENT_BALANCE();
@@ -231,30 +306,177 @@ class CardHolder {
                 cout << "Available Limit: " << CurrCard->spendLimit - CurrCard->outstandingBalance << endl;
                 cout << e.what() << endl;
             }
+            catch(NO_CARD& e) {
+                cout << e.what() << endl;
+                cout << "Use .applyCreditCard() method" << endl;
+            }
         }
 
-        void payBill() {
-            CurrCard->statement.pushback(Transaction("Pay Outstanding Balance",CurrCard->outstandingBalance));
+        void displayCards() {
+            cout << "Displaying the list of cards:" << endl;
+            for(int i=0; i<Cards.size(); i++) {
+                cout << i+1 << endl;
+                cout << "\t" << "Card Name:  " << Cards[i]->cName << endl;
+                cout << "\t" << "Card No:    " << Cards[i]->cardNo << endl;
+                cout << "\t" << "Card Limit: " << Cards[i]->spendLimit << endl;
+            }
+        }
+        
+        void displayCurrCard() {
+            try {
+                if(CurrCard == NULL) 
+                    throw NO_CARD();
+                else {
+                    cout << "Details of Current Card" << endl;
+                    CurrCard->cardDetails();
+                }
+            }
+            catch(NO_CARD& e) {
+                cout << e.what() << endl;
+                cout << "Use .applyCreditCard() method" << endl;
+            }
+        }
+
+        void switchCard() {
+            try {
+                if(CurrCard == NULL) 
+                    throw NO_CARD();
+                else {
+                    displayCards();
+                    int srNo;
+                    cout << "Enter Card Serial Number: " << endl;
+                    cin >> srNo;
+                    CurrCard = Cards[srNo-1];
+                }
+            }
+            catch(NO_CARD& e) {
+                cout << e.what() << endl;
+                cout << "Use .applyCreditCard() method" << endl;
+            }
+        } 
+
+        void repay() {
+            CurrCard->statement.push_back(Transaction("Repay Due Amount",CurrCard->outstandingBalance));
+            cout << "Repaid the Due Amount: " << CurrCard->outstandingBalance << endl;
             CurrCard->outstandingBalance = 0;
         }
 
         void increaseLimit() {
-            //increase is overall spend is more than 5x the current limit
-            double totalSpend = 0;
-            Transaction* trans;
-            for(int i=0; i<CurrCard->statement.size(), i++) {
-                totalSpend += CurrCard->statement[i].amt;
-            } 
-            
-
+            double totalSpend = CurrCard->Statement();
+            try {
+                if(totalSpend >= (5*CurrCard->spendLimit)) {
+                    cout << "Limit: " << CurrCard->spendLimit << "-> ";
+                    CurrCard->spendLimit *= 1.5;
+                    cout << CurrCard->spendLimit << endl;
+                }
+                else 
+                    throw INELIGIBLE_LIMIT_INCREMENT();
+            }
+            catch (INELIGIBLE_LIMIT_INCREMENT& e) {
+                cout << e.what() << endl;
+            }
         }
 
-}
+        void viewStatement() {
+            cout << endl << "Card spends: " << endl;
+            CurrCard->Statement();
+        }
+
+        void useRewards() {
+            CurrCard->outstandingBalance -= CurrCard->rewardPoints;
+            cout << "Used: " << CurrCard->rewardPoints << "towards due repay" << endl;
+            CurrCard->statement.push_back(Transaction("Repay Due Amount",CurrCard->rewardPoints));
+            CurrCard->rewardPoints = 0;
+        }
+
+        void dropCard(int x) {
+            CurrCard = Cards[x];
+            try {
+                if(CurrCard->outstandingBalance != 0) {
+                    throw DUE_PENDING();
+                }
+                else {
+                    free(Cards[x]);
+                    Cards.erase(Cards.begin() + x);
+                    cout << "Card Surrendered" << endl;
+                }
+            }
+            catch (DUE_PENDING& e) {
+                cout << e.what() << endl;
+            }
+        }
+
+        void surrenderCard() {
+            displayCards();
+            int srNo;
+            cout << "Enter Card Serial Number you want to Surrender: " << endl;
+            cin >> srNo;
+            try {
+                if(srNo > Cards.size() || srNo<=0) {
+                    throw INVALID_INPUT();
+                }
+                else 
+                    dropCard(srNo-1);
+            }
+            catch(INVALID_INPUT& e) {
+                cout << e.what() << endl;
+            }
+
+            // CurrCard=Cards[srNo-1];
+            // try {
+            //     if(CurrCard->outstandingBalance != 0) {
+            //         throw DUE_PENDING();
+            //     }
+            //     else {
+            //         free(Cards[srNo-1]);
+            //         Cards.erase(Cards.begin() + srNo - 1);
+            //         cout << "Card Surrendered" << endl;
+            //     }
+            // }
+            // catch (DUE_PENDING& e) {
+            //     cout << e.what() << endl;
+            // }
+        }
+
+};
+
+class System {
+
+
+};
 
 int main()
 {
-    srand(time(NULL));
-    // expiryDate();
-    CreditCard c;
-    c.displayCard();
+    CardHolder Tar("Tiger", "India", "@gmail.com", "999", 700);
+    Tar.applyCreditCard();
+    Tar.displayCurrCard();
+    Tar.repay();
+    Tar.surrenderCard();
+    // Tar.pay("Triumph", 25000);
+    // Tar.pay("Axor", 5000);
+    // Tar.pay("Triumph", 50000);
+    // Tar.repay();
+    // Tar.pay("Clan", 50000);
+    // Tar.repay();
+    // Tar.pay("Clan", 50000);
+    // Tar.repay();
+    // Tar.pay("Clan", 50000);
+    // Tar.repay();
+    // Tar.pay("Clan", 50000);
+    // Tar.repay();
+    // Tar.increaseLimit();
+    // Tar.applyCreditCard();
+    // Tar.viewStatement();
+    // Tar.displayCards();
+
+
+    int ch;
+    while(1) {
+        break;
+    }
+    return 0;
+}
+
+void giveChoices() {
+    return;
 }
